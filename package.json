@@ -1,6 +1,6 @@
 {
   "name": "@apiverve/action-dns-monitor",
-  "version": "0.1.0-beta",
+  "version": "1.0.0",
   "description": "Verify DNS configuration, check propagation, and validate DNSSEC after deployments",
   "main": "dist/index.js",
   "scripts": {

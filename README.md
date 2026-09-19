@@ -2,8 +2,6 @@
 
 > Verify DNS configuration, check propagation, and validate DNSSEC after deployments
 
-> **Beta Release** - This action is in beta. We'd love your feedback! [Open an issue](https://github.com/apiverve/action-dns-monitor/issues) if you encounter any problems.
-
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-DNS_Monitor-blue?logo=github)](https://github.com/apiverve/action-dns-monitor)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -24,11 +22,11 @@ This action provides access to APIVerve's DNS Monitor APIs directly in your GitH
 
 | API | Description |
 |-----|-------------|
-| `dnslookup` | DNS Lookup is a simple tool for looking up the DNS records of a domain. It returns the A, MX, and other records of the domain. |
+| `dnslookup` | DNS Lookup retrieves published DNS records for any domain, including IPv4 (A), IPv6 (AAAA), and mail exchange (MX) servers. It provides hostnames, priorities, and dual-stack status flags, while paid plans add TXT, CNAME, and nameserver records. |
 | `dnspropagation` | DNS Propagation Checker verifies if DNS changes have propagated across multiple global DNS servers. It queries DNS servers worldwide to show the current state of your DNS records. |
-| `dnsseccheck` | DNSSEC Checker validates the DNSSEC (Domain Name System Security Extensions) configuration of a domain. It verifies that DNS responses are authenticated and haven&#x27;t been tampered with. |
-| `nameservers` | Nameservers is a tool for looking up the authoritative nameservers for any domain. Returns nameserver hostnames, IP addresses, reverse DNS, and owner information. |
-| `mxlookup` | MX Lookup is a simple tool for getting MX records for a domain. It returns the MX records for the given domain. |
+| `dnsseccheck` | DNSSEC Checker validates the DNSSEC (Domain Name System Security Extensions) configuration of a domain. It verifies that DNS responses are authenticated and haven't been tampered with. |
+| `nameservers` | Nameservers queries authoritative DNS records for any domain to list its nameservers, IP addresses, and reverse DNS records. It detects multiple DNS providers, counts total nameservers, and identifies who runs each server. |
+| `mxlookup` | MX Lookup queries DNS to find MX records for any domain. It returns an array of mail exchange hostnames and their priority routing values in real time. |
 
 ---
 
@@ -40,7 +38,7 @@ This action provides access to APIVerve's DNS Monitor APIs directly in your GitH
   with:
     api_key: ${{ secrets.APIVERVE_KEY }}
     api: dnslookup
-    params: '{&quot;domain&quot;: &quot;example.com&quot;, &quot;type&quot;: &quot;A&quot;}'
+    params: '{"domain": "example.com", "type": "A"}'
 ```
 
 ---
@@ -71,6 +69,27 @@ Go to your repository **Settings** → **Secrets and variables** → **Actions**
 
 ---
 
+## Pass/fail checks
+
+Set `check` and the action stops being a plain API call: it evaluates the result and fails the job when something is wrong, so problems surface in CI instead of in production.
+
+### Assert a DNS record after deploy
+
+Fail the job unless the CNAME points where you expect
+
+```yaml
+- name: Assert a DNS record after deploy
+  uses: apiverve/action-dns-monitor@v1
+  with:
+    api_key: $
+    check: dns-record
+    domain: www.example.com
+    record_type: CNAME
+    expected_value: example.netlify.app
+```
+
+---
+
 ## Inputs
 
 | Input | Description | Required | Default |
@@ -81,7 +100,10 @@ Go to your repository **Settings** → **Secrets and variables** → **Actions**
 | `output_file` | Path to save binary output (images, PDFs) | No | - |
 | `format` | Response format: `json`, `yaml`, or `xml` | No | `json` |
 | `fail_on_error` | Fail workflow if API returns error | No | `true` |
-
+| `check` | Run a pass/fail check instead: `dns-record` | No | - |
+| `domain` | Domain to check | With `check` | - |
+| `record_type` | Record type that must exist | No | `A` |
+| `expected_value` | Fail unless a record contains this value | No | - |
 *\*API key is required but can be provided via input OR `APIVERVE_API_KEY` / `APIVERVE_KEY` environment variable.*
 
 ## Outputs
@@ -92,7 +114,8 @@ Go to your repository **Settings** → **Secrets and variables** → **Actions**
 | `data` | The `data` field from response as JSON |
 | `status` | API status (`ok` or `error`) |
 | `file` | Path to downloaded file (if `output_file` was used) |
-
+| `days_remaining` | Days until expiry (`ssl-expiry`, `domain-expiry`) |
+| `records` | Matching DNS records as JSON (`dns-record`) |
 ---
 
 ## Examples
@@ -108,7 +131,7 @@ Check DNS records for a domain
   with:
     api_key: ${{ secrets.APIVERVE_KEY }}
     api: dnslookup
-    params: '{&quot;domain&quot;: &quot;example.com&quot;, &quot;type&quot;: &quot;A&quot;}'
+    params: '{"domain": "example.com", "type": "A"}'
 
 - name: Use result
   run: echo "Result: ${{ steps.dns-monitor-0.outputs.data }}"
@@ -125,7 +148,7 @@ Check if DNS changes have propagated globally
   with:
     api_key: ${{ secrets.APIVERVE_KEY }}
     api: dnspropagation
-    params: '{&quot;domain&quot;: &quot;api.example.com&quot;, &quot;type&quot;: &quot;A&quot;}'
+    params: '{"domain": "api.example.com", "type": "A"}'
 
 - name: Use result
   run: echo "Result: ${{ steps.dns-monitor-1.outputs.data }}"
@@ -142,7 +165,7 @@ Verify DNSSEC is properly configured
   with:
     api_key: ${{ secrets.APIVERVE_KEY }}
     api: dnsseccheck
-    params: '{&quot;domain&quot;: &quot;example.com&quot;}'
+    params: '{"domain": "example.com"}'
 
 - name: Use result
   run: echo "Result: ${{ steps.dns-monitor-2.outputs.data }}"
@@ -173,7 +196,7 @@ jobs:
         with:
           api_key: ${{ secrets.APIVERVE_KEY }}
           api: dnslookup
-          params: '{&quot;domain&quot;: &quot;example.com&quot;, &quot;type&quot;: &quot;A&quot;}'
+          params: '{"domain": "example.com", "type": "A"}'
 
       - name: Show result
         run: |
